@@ -8,6 +8,9 @@ class ReversiGUI:
     def __init__(self, master):
         self.master = master
         master.title("黑白棋")
+        
+        self.black_img = tk.PhotoImage(file="black.png")
+        self.white_img = tk.PhotoImage(file="white.png")
 
         # 讀取或初始化玩家統計
         if os.path.exists(STAT_FILE):
@@ -48,6 +51,8 @@ class ReversiGUI:
         # ===== 底部狀態列 =====
         self.status = tk.Label(master, text="尚未開始", anchor=tk.W)
         self.status.pack(fill=tk.X, padx=5, pady=5)
+        
+        self.draw_board()
 
     def draw_board(self):
         """畫出 8×8 綠底方格並標示座標（A1 at top-left, 由上往下遞增）"""
@@ -67,22 +72,51 @@ class ReversiGUI:
                     (y0 + y1) / 2,
                     text=coord,
                     fill="white",
-                    font=("Arial", 12)
+                    font=("Arial", 10)
                 )
 
+    def draw_piece(self, row, col, color):
+        x = col * self.cell_size + self.cell_size // 2
+        y = row * self.cell_size + self.cell_size // 2
+        if color == "black":
+            self.canvas.create_image(x, y, image=self.black_img)
+        elif color == "white":
+            self.canvas.create_image(x, y, image=self.white_img)
+    
+    def init_pieces(self):
+        self.board = [[0 for _ in range(8)] for _ in range(8)]
+        self.board[3][3] = 2  # 白
+        self.board[3][4] = 1  # 黑
+        self.board[4][3] = 1  # 黑
+        self.board[4][4] = 2  # 白
+        self.redraw_pieces()
+    
+    def redraw_pieces(self):
+        for row in range(8):
+            for col in range(8):
+                if self.board[row][col] == 1:
+                    self.draw_piece(row, col, "black")
+                elif self.board[row][col] == 2:
+                    self.draw_piece(row, col, "white")   
+                    
     def start_game(self):
         """開始遊戲，顯示先手玩家"""
         self.current_player = self.first_var.get()
+        self.draw_board()
+        self.init_pieces()
         name = self.p1_name.get() if self.current_player == 1 else self.p2_name.get()
         color = "黑" if self.current_player == 1 else "白"
         self.status.config(text=f"{name} ({color}) 開始下子")
+        self.canvas.bind("<Button-1>", self.on_click)
         # TODO: 在此初始化棋子並綁定點擊事件 self.canvas.bind("<Button-1>", self.on_click)
 
     def reset_board(self):
         """重新開始一局"""
         if messagebox.askyesno("重新開始", "確定要重新開始？"):
+            self.canvas.unbind("<Button-1>")
             self.draw_board()
             self.status.config(text="已重置，請按「開始遊戲」")
+            self.board = [[0 for _ in range(8)] for _ in range(8)]
 
     def save_names(self):
         """儲存玩家名稱至統計檔案"""
@@ -92,6 +126,19 @@ class ReversiGUI:
         with open(STAT_FILE, "w", encoding="utf-8") as f:
             json.dump(self.stats, f, ensure_ascii=False, indent=2)
         messagebox.showinfo("儲存成功", "玩家名稱已儲存！")
+        
+    def on_click(self, event):
+        col = event.x // self.cell_size
+        row = event.y // self.cell_size
+        if 0 <= row < 8 and 0 <= col < 8 and self.board[row][col] == 0:
+            self.board[row][col] = self.current_player
+            color = "black" if self.current_player == 1 else "white"
+            self.draw_piece(row, col, color)
+            self.current_player = 2 if self.current_player == 1 else 1
+            name = self.p1_name.get() if self.current_player == 1 else self.p2_name.get()
+            ctext = "黑" if self.current_player == 1 else "白"
+            self.status.config(text=f"{name} ({ctext}) 的回合")
+            
 
 if __name__ == "__main__":
     root = tk.Tk()
