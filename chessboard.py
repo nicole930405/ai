@@ -64,7 +64,7 @@ class ReversiGUI:
         
         player_label = tk.Label(container,
                             text="玩家 1" if is_player1 else "玩家 2",
-                            font=("Arial", 14, "bold"),
+                            font=("Arial", 12, "bold"),
                             bg=panel["bg"], fg="white")
         player_label.pack(pady=(20, 5)) 
         
@@ -141,6 +141,7 @@ class ReversiGUI:
         self.current_player = self.first_var.get()
         self.draw_board()
         self.init_pieces()
+        self.redraw_pieces()
         name = self.p1_name_var.get() if self.current_player == 1 else self.p2_name_var.get()
         color = "黑" if self.current_player == 1 else "白"
         self.status.config(text=f"{name} ({color}) 開始下子")
@@ -154,10 +155,12 @@ class ReversiGUI:
             self.draw_board()
             self.status.config(text="已重置，請按「開始遊戲」")
             self.board = [[0 for _ in range(8)] for _ in range(8)]
+            self.p1_score_label.config(text="分數：0")
+            self.p2_score_label.config(text="分數：0")
 
     def save_names(self):
         """儲存玩家名稱至統計檔案"""
-        for pname in (self.p1_name.get(), self.p2_name.get()):
+        for pname in (self.p1_name_var.get(), self.p2_name_var.get()):
             if pname not in self.stats:
                 self.stats[pname] = {"wins": 0, "losses": 0, "draws": 0}
         with open(STAT_FILE, "w", encoding="utf-8") as f:
@@ -169,8 +172,7 @@ class ReversiGUI:
         row = event.y // self.cell_size
         if 0 <= row < 8 and 0 <= col < 8 and self.board[row][col] == 0:
             self.board[row][col] = self.current_player
-            color = "black" if self.current_player == 1 else "white"
-            self.draw_piece(row, col, color)
+            self.redraw_pieces()  
             self.current_player = 2 if self.current_player == 1 else 1
             name = self.p1_name_var.get() if self.current_player == 1 else self.p2_name_var.get()
             ctext = "黑" if self.current_player == 1 else "白"
