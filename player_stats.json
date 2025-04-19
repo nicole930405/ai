@@ -1,0 +1,22 @@
+{
+  "黑方": {
+    "wins": 0,
+    "losses": 0,
+    "draws": 0
+  },
+  "白方": {
+    "wins": 0,
+    "losses": 0,
+    "draws": 0
+  },
+  "海": {
+    "wins": 0,
+    "losses": 0,
+    "draws": 0
+  },
+  "山": {
+    "wins": 0,
+    "losses": 0,
+    "draws": 0
+  }
+}
