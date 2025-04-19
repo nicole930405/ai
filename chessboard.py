@@ -8,6 +8,7 @@ class ReversiGUI:
     def __init__(self, master):
         self.master = master
         master.title("黑白棋")
+        master.configure(bg="#ADB5AB")
         
         self.black_img = tk.PhotoImage(file="black.png")
         self.white_img = tk.PhotoImage(file="white.png")
@@ -19,40 +20,77 @@ class ReversiGUI:
         else:
             self.stats = {}
 
-        # ===== 上方控制區域 =====
-        ctrl = tk.Frame(master)
-        ctrl.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+        # 主框架
+        self.main_frame = tk.Frame(master, bg="#2E2E2E")
+        self.main_frame.pack(padx=10, pady=10)
 
-        tk.Label(ctrl, text="玩家 1 (黑)：").grid(row=0, column=0)
-        self.p1_name = tk.Entry(ctrl, width=10)
-        self.p1_name.insert(0, "黑方")
-        self.p1_name.grid(row=0, column=1)
+        # 左記分板
+        self.left_panel = tk.Frame(self.main_frame, bg="#3B3B3B", width=120)
+        self.left_panel.pack(side=tk.LEFT, fill=tk.Y, padx=5)
+        self.setup_score_panel(self.left_panel, is_player1=True)
 
-        tk.Label(ctrl, text="玩家 2 (白)：").grid(row=0, column=2)
-        self.p2_name = tk.Entry(ctrl, width=10)
-        self.p2_name.insert(0, "白方")
-        self.p2_name.grid(row=0, column=3)
+        # 棋盤
+        self.canvas = tk.Canvas(self.main_frame, width=400, height=400, bg="#4CAF50", highlightthickness=0)
+        self.canvas.pack(side=tk.LEFT, padx=10)
+        self.cell_size = 50
 
-        # 先後手選擇
+        # 右記分板
+        self.right_panel = tk.Frame(self.main_frame, bg="#3B3B3B", width=120)
+        self.right_panel.pack(side=tk.LEFT, fill=tk.Y, padx=5)
+        self.setup_score_panel(self.right_panel, is_player1=False)
+
+        # 底部控制區
+        self.bottom_frame = tk.Frame(master, bg="#2E2E2E")
+        self.bottom_frame.pack(pady=5)
+
         self.first_var = tk.IntVar(value=1)
-        tk.Radiobutton(ctrl, text="玩家1先手", variable=self.first_var, value=1).grid(row=0, column=4)
-        tk.Radiobutton(ctrl, text="玩家2先手", variable=self.first_var, value=2).grid(row=0, column=5)
+        tk.Radiobutton(self.bottom_frame, text="玩家1先手", variable=self.first_var, value=1, bg="#2E2E2E", fg="white", selectcolor="#4CAF50").pack(side=tk.LEFT, padx=10)
+        tk.Radiobutton(self.bottom_frame, text="玩家2先手", variable=self.first_var, value=2, bg="#2E2E2E", fg="white", selectcolor="#4CAF50").pack(side=tk.LEFT, padx=10)
+        tk.Button(self.bottom_frame, text="開始遊戲", command=self.start_game, bg="#2196F3", fg="white").pack(side=tk.LEFT, padx=10)
+        tk.Button(self.bottom_frame, text="重新開始", command=self.reset_board, bg="#F44336", fg="white").pack(side=tk.LEFT, padx=10)
 
-        tk.Button(ctrl, text="開始遊戲", command=self.start_game).grid(row=0, column=6, padx=5)
-        tk.Button(ctrl, text="重新開始", command=self.reset_board).grid(row=0, column=7)
-        tk.Button(ctrl, text="儲存名稱", command=self.save_names).grid(row=0, column=8)
+        # 狀態列
+        self.status = tk.Label(master, text="尚未開始", anchor=tk.W, bg="#2E2E2E", fg="white")
+        self.status.pack(fill=tk.X, padx=10, pady=5)
 
-        # ===== 棋盤區域 =====
-        self.canvas = tk.Canvas(master, width=400, height=400, bg="green")
-        self.canvas.pack(padx=5, pady=5)
-        self.cell_size = 50  
         self.draw_board()
-
-        # ===== 底部狀態列 =====
-        self.status = tk.Label(master, text="尚未開始", anchor=tk.W)
-        self.status.pack(fill=tk.X, padx=5, pady=5)
         
-        self.draw_board()
+    def setup_score_panel(self, panel, is_player1):
+        name = tk.StringVar()
+    
+        # 建立容器使整體置中
+        container = tk.Frame(panel, bg=panel["bg"])
+        container.pack(expand=True)
+        
+        player_label = tk.Label(container,
+                            text="玩家 1" if is_player1 else "玩家 2",
+                            font=("Arial", 14, "bold"),
+                            bg=panel["bg"], fg="white")
+        player_label.pack(pady=(20, 5)) 
+        
+        entry = tk.Entry(container, textvariable=name, font=("Arial", 12, "bold"), justify="center")
+        entry.pack(pady=(20, 10), fill=tk.X, padx=10)
+
+        save_btn = tk.Button(container, text="儲存名稱", command=self.save_names, bg="#4CAF50", fg="white")
+        save_btn.pack(pady=(0, 10))
+
+        score_label = tk.Label(container, text="分數：0", font=("Arial", 12), bg=panel["bg"], fg="white")
+        score_label.pack()
+
+        if is_player1:
+            self.p1_name_var = name
+            self.p1_score_label = score_label
+        else:
+            self.p2_name_var = name
+            self.p2_score_label = score_label
+
+        entry.insert(0, "黑方" if is_player1 else "白方")
+        
+    def load_stats(self):
+        if os.path.exists(STAT_FILE):
+            with open(STAT_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return {}
 
     def draw_board(self):
         """畫出 8×8 綠底方格並標示座標（A1 at top-left, 由上往下遞增）"""
@@ -64,16 +102,9 @@ class ReversiGUI:
                 x1 = x0 + self.cell_size
                 y1 = y0 + self.cell_size
                 # 畫格子
-                self.canvas.create_rectangle(x0, y0, x1, y1, outline="black", fill="green")
-                # 標示座標：列 A~H，行 1~8
-                coord = f"{string.ascii_uppercase[col]}{row+1}"
-                self.canvas.create_text(
-                    (x0 + x1) / 2,
-                    (y0 + y1) / 2,
-                    text=coord,
-                    fill="white",
-                    font=("Arial", 10)
-                )
+                self.canvas.create_rectangle(x0, y0, x1, y1, outline="#2e2e2e", fill="#3f7f5f")
+                
+        
 
     def draw_piece(self, row, col, color):
         x = col * self.cell_size + self.cell_size // 2
@@ -92,19 +123,25 @@ class ReversiGUI:
         self.redraw_pieces()
     
     def redraw_pieces(self):
+        self.draw_board()
+        black = white = 0
         for row in range(8):
             for col in range(8):
                 if self.board[row][col] == 1:
                     self.draw_piece(row, col, "black")
+                    black += 1
                 elif self.board[row][col] == 2:
-                    self.draw_piece(row, col, "white")   
-                    
+                    self.draw_piece(row, col, "white")
+                    white += 1
+        self.p1_score_label.config(text=f"分數：{black}")
+        self.p2_score_label.config(text=f"分數：{white}")
+        
     def start_game(self):
         """開始遊戲，顯示先手玩家"""
         self.current_player = self.first_var.get()
         self.draw_board()
         self.init_pieces()
-        name = self.p1_name.get() if self.current_player == 1 else self.p2_name.get()
+        name = self.p1_name_var.get() if self.current_player == 1 else self.p2_name_var.get()
         color = "黑" if self.current_player == 1 else "白"
         self.status.config(text=f"{name} ({color}) 開始下子")
         self.canvas.bind("<Button-1>", self.on_click)
@@ -135,7 +172,7 @@ class ReversiGUI:
             color = "black" if self.current_player == 1 else "white"
             self.draw_piece(row, col, color)
             self.current_player = 2 if self.current_player == 1 else 1
-            name = self.p1_name.get() if self.current_player == 1 else self.p2_name.get()
+            name = self.p1_name_var.get() if self.current_player == 1 else self.p2_name_var.get()
             ctext = "黑" if self.current_player == 1 else "白"
             self.status.config(text=f"{name} ({ctext}) 的回合")
             
