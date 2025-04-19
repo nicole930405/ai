@@ -28,5 +28,15 @@
     "wins": 0,
     "losses": 0,
     "draws": 0
+  },
+  "黑方1": {
+    "wins": 0,
+    "losses": 0,
+    "draws": 0
+  },
+  "白方2": {
+    "wins": 0,
+    "losses": 0,
+    "draws": 0
   }
 }
