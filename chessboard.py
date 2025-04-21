@@ -304,6 +304,22 @@ class ReversiGUI:
         self.start_time = time.time()
         self.switch_player()
 
+    def end_game(self):
+        black = sum(row.count(1) for row in self.board)
+        white = sum(row.count(2) for row in self.board)
+
+        if black > white:
+            winner = f"{self.p1_name_var.get()} (黑) 勝利！"
+        elif white > black:
+            winner = "電腦 (白) 勝利！"
+        else:
+            winner = "雙方平手！"
+
+        self.status.config(text=f"遊戲結束！{winner}")
+        self.draw_info_text(f"遊戲結束！{winner}", color="red")
+        self.canvas.unbind("<Button-1>")
+        self.update_time_label(0)  # 避免殘留步驟時間
+
     def switch_player(self):
         self.current_player = 2 if self.current_player == 1 else 1
 
