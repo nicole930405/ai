@@ -55,7 +55,7 @@ class ReversiGUI:
         self.right_panel.pack(side=tk.LEFT, fill=tk.Y, padx=5)
         # 放在右側記分板上方的提示文字框
         self.info_label = tk.Label(self.right_panel, text="", bg="#3B3B3B", fg="white", font=("Arial", 10), justify="left",anchor="nw", wraplength=200)
-        self.info_label.place(x=0, y=0, width=200, height=60)
+        self.info_label.place(x=0, y=0, width=240, height=100)
         self.setup_score_panel(self.right_panel, is_player1=False)
 
         # 底部控制區
@@ -263,7 +263,7 @@ class ReversiGUI:
         symbol = "黑" if player == 1 else "白"
         other = "白" if player == 1 else "黑"
         eat_info = "".join([f"({fx},{fy})" for fx, fy in total_flips])
-        return_info = f" 還{removed}給{other}" if removed else ""
+        return_info = f"還{removed}給{other}棋" if removed else ""
         if original_count == 1:
             msg = f"{symbol}棋：({row},{col})只吃對方一棋子! {other}棋：{eat_info} 被吃 \n {return_info}"
         elif original_count > 2:
