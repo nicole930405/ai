@@ -75,6 +75,7 @@ class ReversiGUI:
         self.last_flipped_positions = []# 記住上回合吃掉的座標
         self.last_returned_position = None
 
+        #時間計時
         self.total_time = 0
         self.start_time = None
         self.time_label = tk.Label(self.bottom_frame, text="每一步時間：0.00 秒 | 總時間：0.00 秒", bg="#2E2E2E", fg="white")
@@ -198,6 +199,9 @@ class ReversiGUI:
             self.board = [[0 for _ in range(8)] for _ in range(8)]
             self.p1_score_label.config(text="分數：0")
             self.p2_score_label.config(text="分數：0")
+            self.total_time = 0
+            self.start_time = None
+            self.update_time_label(0)
 
     def save_names(self):
         for pname in (self.p1_name_var.get(), self.p2_name_var.get()):
@@ -263,15 +267,13 @@ class ReversiGUI:
         if original_count == 1:
             msg = f"{symbol}棋：({row},{col})只吃對方一棋子! {other}棋：{eat_info} 被吃 \n {return_info}"
         elif original_count > 2:
-            msg = f"{symbol}棋：({row},{col})只吃對方一棋子! {other}棋：{eat_info} 被吃 \n {return_info}"
+            msg = f"{symbol}棋：({row},{col})吃對方超過兩顆棋子! {other}棋：{eat_info} 被吃 \n {return_info}"
         else:
             msg = "None"
         return msg
 
     def draw_info_text(self, message, color = "white"):
-        # full_message = "（此提示將於 5 秒後自動消失）\n"+ message 
         self.info_label.config(text=message, fg = color)
-        # self.master.after(5000, lambda: self.info_label.config(text=""))
 
     def on_click(self, event):
 
