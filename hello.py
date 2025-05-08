@@ -81,6 +81,11 @@ class ReversiGUI:
         self.time_label = tk.Label(self.bottom_frame, text="每一步時間：0.00 秒 | 總時間：0.00 秒", bg="#2E2E2E", fg="white")
         self.time_label.pack(side=tk.LEFT, padx=10)
 
+        self.pending_return = []
+        self.selecting_return = False
+        self.returned_position = None
+        self.return_confirmed = False
+
         self.draw_board()
 
     def setup_score_panel(self, panel, is_player1):
@@ -122,12 +127,13 @@ class ReversiGUI:
                 y1 = y0 + self.cell_size
                 # 若這格剛剛被翻 → 顯示深色
                 pos = (row, col)
-                if pos == getattr(self, "last_returned_position", None):
-                    color = "#5f9f7f"
-                elif pos in getattr(self, 'last_flipped_positions', []):
-                    color = "#2e5f3f"  # 深綠
+                # 👉 把底色設定放這裡（含還棋的淺綠）
+                if pos == self.last_returned_position:
+                    color = "#5f9f7f"  # 淺綠，代表還回去的棋
+                elif pos in self.last_flipped_positions:
+                    color = "#2e5f3f"  # 深綠，被吃的棋子
                 else:
-                    color = "#3f7f5f"  # 原綠
+                    color = "#3f7f5f"  # 原始棋盤底色
 
                 self.canvas.create_rectangle(x0, y0, x1, y1, outline="#2e2e2e", fill=color)
 
@@ -159,15 +165,28 @@ class ReversiGUI:
                     self.draw_piece(row, col, "white")
                     white += 1
 
-        # 顯示可落子位置（黃色圓點）
-        
-        for row, col in self.get_valid_moves(self.current_player):
-            x = col * self.cell_size + self.cell_size // 2
-            y = row * self.cell_size + self.cell_size // 2
-            self.canvas.create_oval(x-5, y-5, x+5, y+5, fill="yellow", outline="")
+        # 顯示被吃（深綠）與還回（淺綠）
+        for (x, y) in self.last_flipped_positions:
+            self.canvas.create_rectangle(
+                y * self.cell_size, x * self.cell_size,
+                (y + 1) * self.cell_size, (x + 1) * self.cell_size,
+                fill="#2e5f3f", outline="#2e2e2e"
+            )
+            if self.board[x][y] == 1:
+                self.draw_piece(x, y, "black")
+            elif self.board[x][y] == 2:
+                self.draw_piece(x, y, "white")
+
+        # 顯示提示黃點
+        if not self.selecting_return:
+            for row, col in self.get_valid_moves(self.current_player):
+                x = col * self.cell_size + self.cell_size // 2
+                y = row * self.cell_size + self.cell_size // 2
+                self.canvas.create_oval(x-5, y-5, x+5, y+5, fill="yellow", outline="")
 
         self.p1_score_label.config(text=f"分數：{black}")
         self.p2_score_label.config(text=f"分數：{white}")
+
 
     def start_game(self):
         self.current_player = self.first_var.get()
@@ -232,7 +251,7 @@ class ReversiGUI:
     def flip_pieces(self, row, col, player):
         opponent = 2 if player == 1 else 1
         total_flips = [] # 收集所有可翻轉的棋子座標
-        flip_info_by_direction = []
+        # flip_info_by_direction = []
         for dx, dy in DIRECTIONS:
             x, y = row + dx, col + dy
             flip = []
@@ -242,48 +261,91 @@ class ReversiGUI:
                 y += dy
             if flip and 0 <= x < 8 and 0 <= y < 8 and self.board[x][y] == player:
                 total_flips.extend(flip) # 加入所有方向的可翻轉棋子
-                flip_info_by_direction.append(flip)
+                # flip_info_by_direction.append(flip)
 
-        removed = None
+        # removed = None
         original_count = len(total_flips)
-        if len(total_flips) >2:
-            removed = random.choice(total_flips)
-            total_flips.remove(removed)
-            self.last_returned_position = removed
-        else:
-            self.last_returned_position = None
-
         self.last_flipped_positions = total_flips.copy()
 
-        
-        for fx, fy, in total_flips:
-            self.board[fx][fy] = player
+        #準備進入還棋模式
+        if original_count > 2:
+            self.pending_return = total_flips.copy()
+            if player != self.computer_player:
+                # 玩家選擇還棋
+                self.selecting_return = True
+                self.returned_position = None
+                self.return_confirmed = False
+                self.draw_info_text("吃超過三顆，請選一顆棋子還給對方", color="yellow")
+                return "選擇還棋"
+            else:
+                # 電腦自動還棋
+                removed = random.choice(total_flips)
+                self.last_returned_position = removed
+                self.last_flipped_positions = [p for p in total_flips if p != removed]
 
-        # 組合訊息
-        symbol = "黑" if player == 1 else "白"
-        other = "白" if player == 1 else "黑"
-        eat_info = "".join([f"({fx},{fy})" for fx, fy in total_flips])
-        return_info = f"還{removed}給{other}棋" if removed else ""
-        if original_count == 1:
-            msg = f"{symbol}棋：({row},{col})只吃對方一棋子! {other}棋：{eat_info} 被吃 \n {return_info}"
-        elif original_count > 2:
-            msg = f"{symbol}棋：({row},{col})吃對方超過兩顆棋子! {other}棋：{eat_info} 被吃 \n {return_info}"
+                # ✅ 正確翻轉剩下的為電腦色
+                for fx, fy in self.last_flipped_positions:
+                    self.board[fx][fy] = player
+
+                # ✅ 將還的那一顆改回對方顏色（黑）
+                rx, ry = removed
+                self.board[rx][ry] = opponent
+
+                return "None"
         else:
-            msg = "None"
-        return msg
+            # 吃不到三顆 → 正常翻轉全部
+            for fx, fy in total_flips:
+                self.board[fx][fy] = player
+                self.last_returned_position = None
+            return "None"
+        
 
     def draw_info_text(self, message, color = "white"):
         self.info_label.config(text=message, fg = color)
 
     def on_click(self, event):
-
-        if self.current_player == self.computer_player:
-            return  # 如果當前是電腦，不接受點擊
         
         col = event.x // self.cell_size
         row = event.y // self.cell_size
         if not (0 <= row < 8 and 0 <= col < 8):
             return
+        
+        #還棋模式
+        if self.selecting_return:
+            if(row, col) not in self.pending_return:
+                return
+            self.returned_position = (row, col)
+            self.redraw_pieces()
+
+            if messagebox.askyesno("確認還棋", f"確定把({row},{col}) 還給對方嗎?"):
+                x, y = self.returned_position
+                opponent = 2 if self.current_player == 1 else 1
+
+                # 將所有被吃的棋子翻為我方
+                for fx, fy in self.pending_return:
+                    self.board[fx][fy] = self.current_player
+                
+                # 將選中的棋子還給對方
+                self.board[x][y] = opponent
+                self.last_returned_position = (x, y)
+
+                # ✅ 這行是關鍵
+                self.last_flipped_positions = [p for p in self.pending_return if p != (x, y)]
+
+                self.selecting_return = False
+                self.returned_position = None
+                self.redraw_pieces()
+                self.start_time = time.time()
+                self.switch_player()
+            else:
+                self.returned_position = None
+                self.redraw_pieces()
+
+            return
+        
+        if self.current_player == self.computer_player:
+            return  # 如果當前是電腦，不接受點擊
+
         if not self.is_valid_move(row, col, self.current_player):
             return
         
@@ -292,7 +354,7 @@ class ReversiGUI:
         self.total_time += step_time
         self.update_time_label(step_time)
         
-        self.last_flipped_positions = []  # 清除上次被吃提示
+        # self.last_flipped_positions = []  # 清除上次被吃提示
         self.board[row][col] = self.current_player
         #先翻棋取得訊息
         flip_message = self.flip_pieces(row, col, self.current_player)
@@ -301,8 +363,11 @@ class ReversiGUI:
         if flip_message != "None":
             self.draw_info_text(flip_message)
 
-        self.start_time = time.time()
-        self.switch_player()
+        if not self.selecting_return:
+            self.start_time = time.time()
+            self.switch_player()
+            # ✅ 只有在換回玩家時才清除還棋標記
+            self.last_returned_position = None
 
     def end_game(self):
         black = sum(row.count(1) for row in self.board)
@@ -322,6 +387,8 @@ class ReversiGUI:
 
     def switch_player(self):
         self.current_player = 2 if self.current_player == 1 else 1
+
+        
 
         if self.get_valid_moves(self.current_player):
             self.redraw_pieces()
@@ -355,8 +422,16 @@ class ReversiGUI:
         def make_move():
             row, col = random.choice(valid_moves)
             self.board[row][col] = self.computer_player
+
             flip_message = self.flip_pieces(row, col, self.computer_player)
             self.redraw_pieces()
+
+            # 顯示電腦下的位置與還棋提示
+            if self.last_returned_position:
+                rx, ry = self.last_returned_position
+                self.draw_info_text(f"電腦下在 ({row+1}, {col+1})，並還了 ({rx+1}, {ry+1})", color="yellow")
+            else:
+                self.draw_info_text(f"電腦下在 ({row+1}, {col+1})")
 
             if flip_message != "None":
                 self.draw_info_text(flip_message)
@@ -367,6 +442,7 @@ class ReversiGUI:
 
             self.start_time = time.time()
             self.switch_player()
+            self.last_returned_position = None
 
         # 執行延遲後再記錄時間
         self.master.after(500, make_move)
