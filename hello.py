@@ -200,7 +200,7 @@ class ReversiGUI:
         
         if self.current_player == self.computer_player:
             self.status.config(text="電腦思考中...")
-            self.master.after(500, self.computer_move)
+            # self.master.after(500, self.computer_move)
         else:
             name = self.p1_name_var.get()
             color = "黑" if self.current_player == 1 else "白"
@@ -280,7 +280,7 @@ class ReversiGUI:
                 return "選擇還棋"
             else:
                 # 電腦自動還棋
-                removed = random.choice(total_flips)
+                removed = ai.choose_best_return_piece(self.board, total_flips, player)
                 self.last_returned_position = removed
                 self.last_flipped_positions = [p for p in total_flips if p != removed]
 
@@ -325,17 +325,19 @@ class ReversiGUI:
                 # 將所有被吃的棋子翻為我方
                 for fx, fy in self.pending_return:
                     self.board[fx][fy] = self.current_player
-                
+
                 # 將選中的棋子還給對方
                 self.board[x][y] = opponent
                 self.last_returned_position = (x, y)
 
-                # ✅ 這行是關鍵
+                # ✅ 將還的那顆移除，剩下的是我方控制的棋子
                 self.last_flipped_positions = [p for p in self.pending_return if p != (x, y)]
 
+                # ✅ 清除還棋狀態
                 self.selecting_return = False
                 self.returned_position = None
-                self.redraw_pieces()
+
+                # ✅ 記錄時間並切換玩家（會自動 redraw & 處理 AI 回合）
                 self.start_time = time.time()
                 self.switch_player()
             else:
@@ -413,7 +415,9 @@ class ReversiGUI:
     def computer_move(self):
         step_start_time = time.time()
          # 直接讓 AI 算出最佳下一步
-        mv = ai.get_best_move(self.board, self.computer_player, max_depth=4)
+        # mv = ai.get_best_move(self.board, self.computer_player, max_depth=6, time_limit=60.0)
+        mv = ai.get_best_move(self.board, self.computer_player, use_model=True)
+
         if mv is None:
             self.status.config(text="電腦無法落子，PASS！")
             self.draw_info_text("電腦無法落子，PASS！", color="red")
@@ -447,7 +451,8 @@ class ReversiGUI:
             self.last_returned_position = None
 
         # 執行延遲後再記錄時間
-        self.master.after(500, make_move)
+        # self.master.after(500, make_move)
+        make_move()
 
 
     def update_time_label(self, step_time):

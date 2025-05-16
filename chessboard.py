@@ -3,7 +3,7 @@ from tkinter import messagebox
 import string, json, os
 import random
 import time
-import ai
+import ai_2
 
 STAT_FILE = "player_stats.json"
 
@@ -413,7 +413,7 @@ class ReversiGUI:
     def computer_move(self):
         step_start_time = time.time()
          # 直接讓 AI 算出最佳下一步
-        mv = ai.get_best_move(self.board, self.computer_player, max_depth=4)
+        mv = ai_2.get_best_move(self.board, self.computer_player, max_depth=4)
         if mv is None:
             self.status.config(text="電腦無法落子，PASS！")
             self.draw_info_text("電腦無法落子，PASS！", color="red")
