@@ -191,7 +191,7 @@ class ReversiGUI:
 
     def start_game(self):
         self.current_player = self.first_var.get()
-        self.computer_player = 2 if self.current_player == 1 else 1
+        self.computer_player = 2 
         self.init_pieces()
         self.redraw_pieces()
         self.total_time = 0
@@ -269,7 +269,7 @@ class ReversiGUI:
         self.last_flipped_positions = total_flips.copy()
 
         #準備進入還棋模式
-        if original_count > 2:
+        if original_count > 1:
             self.pending_return = total_flips.copy()
             if player != self.computer_player:
                 # 玩家選擇還棋
@@ -416,13 +416,16 @@ class ReversiGUI:
         step_start_time = time.time()
          # 直接讓 AI 算出最佳下一步
         # mv = ai.get_best_move(self.board, self.computer_player, max_depth=6, time_limit=60.0)
-        mv = ai.get_best_move(self.board, self.computer_player, use_model=True)
+        # mv = ai.get_best_move(self.board, self.computer_player, use_model=True)
+        mv = ai.get_best_move(self.board, self.computer_player, max_depth=3, time_limit=60.0, use_model=False)
+
 
         if mv is None:
             self.status.config(text="電腦無法落子，PASS！")
             self.draw_info_text("電腦無法落子，PASS！", color="red")
             self.current_player = 1 if self.computer_player == 2 else 2
             self.start_time = time.time()
+            self.switch_player()  # 🔁 加上這行才會換到玩家
             return
         
         def make_move():
