@@ -10,11 +10,13 @@ import sys
 import io
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"使用裝置: {device}")
 
 BOARD_SIZE = 8
-EPOCHS = 10
+EPOCHS = 30
 BATCH_SIZE = 64
-NUM_SELFPLAY_GAMES = 20  # 每輪訓練時的自我對弈局數
+NUM_SELFPLAY_GAMES = 50  # 每輪訓練時的自我對弈局數
 LEARNING_RATE = 0.001  # 明確設定學習率
 CLIP_VALUE = 1.0  # 設定梯度裁剪值
 
@@ -186,8 +188,26 @@ def generate_selfplay_data(model):
     return data
 
 def train_model(data, save_path="model.pt"):
+    
+    model = AlphaZeroNet().to(device)
+
+    # 無論是否已存在，先儲存目前尚未訓練的模型為初始版本
+    if not os.path.exists("model_previous.pt"):
+        torch.save(model.state_dict(), "model_previous.pt")
+        print("儲存初始（未訓練）模型為 model_previous.pt")
+
+    # 如果已有訓練模型則載入
+    if os.path.exists(save_path):
+        try:
+            model.load_state_dict(torch.load(save_path, map_location=device))
+            print(f"已載入現有模型 {save_path}")
+            # 儲存為過去模型
+            torch.save(model.state_dict(), "model_previous.pt")
+        except Exception as e:
+            print(f"載入模型失敗: {e}")
+            
     model = AlphaZeroNet()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     
     # 先檢查是否有現有模型，如果有則載入
@@ -286,25 +306,75 @@ def train_model(data, save_path="model.pt"):
     print(f"模型已儲存至 {save_path}")
     print(f"成功處理的批次總數: {valid_batch_count}")
 
+def evaluate_against_previous(new_model_path="model.pt", old_model_path="model_previous.pt", num_games=10):
+    if not os.path.exists(old_model_path):
+        print("找不到過去模型，無法進行對戰評估")
+        return
+
+    print("開始新舊模型對戰評估...")
+    ai_new = AlphaZeroAI(model_path=new_model_path)
+    ai_old = AlphaZeroAI(model_path=old_model_path)
+
+    new_wins = 0
+    old_wins = 0
+    draws = 0
+
+    for game_idx in range(num_games):
+        board = [[0]*BOARD_SIZE for _ in range(BOARD_SIZE)]
+        board[3][3], board[4][4] = 2, 2
+        board[3][4], board[4][3] = 1, 1
+        current_player = 1
+        pass_count = 0
+
+        while pass_count < 2:
+            legal_moves = get_legal_moves(board, current_player)
+            if not legal_moves:
+                pass_count += 1
+                current_player = 3 - current_player
+                continue
+
+            pass_count = 0
+            ai = ai_new if current_player == 1 else ai_old
+            move = ai.choose_move(board, current_player, legal_moves)
+            flipped = apply_move_with_return(board, move, current_player)
+
+            if len(flipped) >= 2:
+                return_one_piece(board, flipped[0], current_player)
+
+            current_player = 3 - current_player
+
+        black_count = sum(row.count(1) for row in board)
+        white_count = sum(row.count(2) for row in board)
+        if black_count > white_count:
+            new_wins += 1
+        elif black_count < white_count:
+            old_wins += 1
+        else:
+            draws += 1
+
+    print(f"對戰結果：新模型勝 {new_wins} 局，過去模型勝 {old_wins} 局，平局 {draws} 局")
+
 
 if __name__ == "__main__":
     # 確保 AlphaZeroAI 可以正常初始化
-    try:
+    #try:
         # 嘗試建立新的 AI 物件
-        if os.path.exists("model.pt"):
-            alphazero = AlphaZeroAI(model_path="model.pt")
-        else:
+    if os.path.exists("model.pt"):
+        alphazero = AlphaZeroAI(model_path="model.pt")
+    else:
             # 如果模型不存在，從頭開始
-            alphazero = AlphaZeroAI()
+        alphazero = AlphaZeroAI()
         
-        print("生成自我對弈資料中...")
-        data = generate_selfplay_data(alphazero)
+    print("生成自我對弈資料中...")
+    data = generate_selfplay_data(alphazero)
+    train_model(data, save_path="model.pt")
         
-        if data:
-            print(f"生成了 {len(data)} 筆訓練資料")
-            train_model(data)
-        else:
-            print("未生成任何訓練資料，請檢查自我對弈邏輯")
+    evaluate_against_previous()
+        #if data:
+        #    print(f"生成了 {len(data)} 筆訓練資料")
+        #    train_model(data)
+        #else:
+        #    print("未生成任何訓練資料，請檢查自我對弈邏輯")
             
-    except Exception as e:
-        print(f"初始化 AlphaZeroAI 時發生錯誤: {e}")
+    #except Exception as e:
+    #    print(f"初始化 AlphaZeroAI 時發生錯誤: {e}")

@@ -151,10 +151,10 @@ class MCTS:
     def get_legal_moves(self, board, player, get_valid_moves):
         return get_valid_moves(board, player)
 
-    def apply_move(self, board, move, player):
+    def apply_move(board, move, player):
         x, y = move
         board[x][y] = player
         # You should apply flipping here as well
 
     def serialize_board(self, board, player):
-        return str(board) + str(player)
+        return tuple(map(tuple, board)), player

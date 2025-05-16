@@ -4,9 +4,17 @@ import string, json, os
 import random
 import time
 from alphazero import AlphaZeroAI ,MCTS
+from alphazero import AlphaZeroNet
+import sys
+import io
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+model = AlphaZeroNet()
+alphazero_ai = AlphaZeroAI("model.py")
 
 ai_model = AlphaZeroAI("model.py")
-mcts_ai = MCTS(model=ai_model, simulatioins = 100)
+mcts_ai = MCTS(model=ai_model, simulations = 100)
 
 
 STAT_FILE = "player_stats.json"
@@ -425,10 +433,10 @@ class ReversiGUI:
             self.start_time = time.time()
             return
 
-        move = ai.choose_move(self.board, self.current_player, legal_moves)
+        #move = ai.choose_move(self.board, self.current_player, legal_moves)
         
         legal_moves = self.get_valid_moves(self.current_player)
-        move = mcts_ai.choose_move(self.board, self.current_player, self.get_valid_moves)
+        move = alphazero_ai.choose_move(self.board, self.current_player, legal_moves)
 
         def make_move():
             row, col = move
