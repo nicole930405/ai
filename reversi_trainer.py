@@ -32,7 +32,7 @@ def generate_training_data(num_games=1, save_every=1):
                 continue
 
             start = time.time()
-            move = ai.get_best_move(board, player, max_depth=3, time_limit=0.1)
+            move = ai.get_best_move(board, player, max_depth=4, time_limit=0.5)
             if move is None:
                 print("⚠️ 無法找到合法落子，跳過這局")
                 break

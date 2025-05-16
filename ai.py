@@ -207,7 +207,7 @@ def minimax(board, player, depth, alpha, beta, maximizing, start_time, time_limi
 
 #     return best_move
 
-def get_best_move(board, player, max_depth=3, time_limit=0.1, use_model=False):
+def get_best_move(board, player, max_depth=4, time_limit=0.5, use_model=False):
     valid_moves = get_valid_moves(board, player)
     if not valid_moves:
         return None
