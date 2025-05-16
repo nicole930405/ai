@@ -274,7 +274,7 @@ class ReversiGUI:
         self.last_flipped_positions = total_flips.copy()
 
         #準備進入還棋模式
-        if original_count > 2:
+        if original_count >= 2:
             self.pending_return = total_flips.copy()
             if player != self.computer_player:
                 # 玩家選擇還棋
