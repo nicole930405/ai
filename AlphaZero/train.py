@@ -6,6 +6,10 @@ import random
 from alphazero import AlphaZeroAI
 from alphazero import AlphaZeroNet
 import os
+import sys
+import io
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 BOARD_SIZE = 8
 EPOCHS = 10
@@ -154,7 +158,8 @@ def generate_selfplay_data(model):
             flipped = apply_move_with_return(board, move, current_player)
 
             # 還棋邏輯：吃超過兩顆需還一顆
-            if len(flipped) > 2:
+            if len(flipped) >= 2:
+                #print(f"還棋：玩家 {current_player} 吃了 {len(flipped)} 顆，返還 {flipped[0]}")
                 return_one_piece(board, flipped[0], current_player)  # 返還其中一顆
 
             current_player = 3 - current_player
@@ -201,7 +206,7 @@ def train_model(data, save_path="model.pt"):
     loss_fn_value = nn.MSELoss()
 
     # 添加學習率調度器
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=2, factor=0.5, verbose=True)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=2, factor=0.5)
     
     valid_batch_count = 0
     

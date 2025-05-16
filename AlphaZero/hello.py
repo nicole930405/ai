@@ -3,7 +3,6 @@ from tkinter import messagebox
 import string, json, os
 import random
 import time
-import ai
 from alphazero import AlphaZeroAI ,MCTS
 
 ai_model = AlphaZeroAI("model.py")
