@@ -190,8 +190,13 @@ class ReversiGUI:
 
 
     def start_game(self):
-        self.current_player = self.first_var.get()
-        self.computer_player = 2 if self.current_player == 1 else 1
+        user_chooses_first = self.first_var.get() == 1  # 玩家選擇誰先手
+
+        self.computer_player = 2  # 電腦永遠是玩家 2（白）
+        self.user_player = 1      # 使用者永遠是玩家 1（黑）
+
+        # 根據選擇決定誰先下
+        self.current_player = self.user_player if user_chooses_first else self.computer_player
         self.init_pieces()
         self.redraw_pieces()
         self.total_time = 0
@@ -201,6 +206,7 @@ class ReversiGUI:
         if self.current_player == self.computer_player:
             self.status.config(text="電腦思考中...")
             # self.master.after(500, self.computer_move)
+            self.computer_move()
         else:
             name = self.p1_name_var.get()
             color = "黑" if self.current_player == 1 else "白"
@@ -269,7 +275,7 @@ class ReversiGUI:
         self.last_flipped_positions = total_flips.copy()
 
         #準備進入還棋模式
-        if original_count > 2:
+        if original_count > 1:
             self.pending_return = total_flips.copy()
             if player != self.computer_player:
                 # 玩家選擇還棋
@@ -416,13 +422,16 @@ class ReversiGUI:
         step_start_time = time.time()
          # 直接讓 AI 算出最佳下一步
         # mv = ai.get_best_move(self.board, self.computer_player, max_depth=6, time_limit=60.0)
-        mv = ai.get_best_move(self.board, self.computer_player, use_model=True)
+        # mv = ai.get_best_move(self.board, self.computer_player, use_model=True)
+        mv = ai.get_best_move(self.board, self.computer_player, max_depth=4, time_limit=60.0, use_model=False)
+
 
         if mv is None:
             self.status.config(text="電腦無法落子，PASS！")
             self.draw_info_text("電腦無法落子，PASS！", color="red")
             self.current_player = 1 if self.computer_player == 2 else 2
             self.start_time = time.time()
+            self.switch_player()  # 🔁 加上這行才會換到玩家
             return
         
         def make_move():
