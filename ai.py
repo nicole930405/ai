@@ -1,8 +1,7 @@
 # ai.py
 import copy, math
-from hello import DIRECTIONS    # ← 這裡改成 hello 而不是 reversi
 import time
-
+from constants import DIRECTIONS
 import numpy as np
 from tensorflow.keras.models import load_model
 
@@ -209,9 +208,10 @@ def minimax(board, player, depth, alpha, beta, maximizing, start_time, time_limi
 
 def get_best_move(board, player, max_depth=4, time_limit=0.5, use_model=False):
     valid_moves = get_valid_moves(board, player)
+    print(f"[AI DEBUG] Player {player} Valid moves: {valid_moves}")  # <<<<<<<<<<
+    
     if not valid_moves:
         return None
-
     if use_model:
         return predict_by_model(board, valid_moves)
     else:
