@@ -4,12 +4,10 @@ import string, json, os
 import random
 import time
 import ai
+from constants import DIRECTIONS
+
 
 STAT_FILE = "player_stats.json"
-
-DIRECTIONS = [(-1, -1), (-1, 0), (-1, 1),
-              ( 0, -1),         ( 0, 1),
-              ( 1, -1), ( 1, 0), ( 1, 1)]
 
 class ReversiGUI:
     def __init__(self, master):
@@ -397,43 +395,66 @@ class ReversiGUI:
     def switch_player(self):
         self.current_player = 2 if self.current_player == 1 else 1
 
-        
+        valid_moves = self.get_valid_moves(self.current_player)
 
-        if self.get_valid_moves(self.current_player):
+        if valid_moves:
             self.redraw_pieces()
+            self.start_time = time.time()
             if self.current_player == self.computer_player:
                 self.status.config(text="電腦思考中...")
-                self.master.after(500, self.computer_move)
+                self.master.after(100, self.computer_move)
             else:
                 name = self.p1_name_var.get()
                 color = "黑" if self.current_player == 1 else "白"
                 self.status.config(text=f"{name} ({color}) 的回合")
         else:
-            if self.get_valid_moves(1 if self.current_player == 2 else 2):
-                self.status.config(text=f"{'電腦' if self.current_player == self.computer_player else '玩家'}無法落子，PASS！")
-                self.draw_info_text("PASS!", color="red")
-                self.current_player = 1 if self.current_player == 2 else 2
+            # 顯示提示
+            self.draw_info_text("無法落子，PASS！若雙方都無法落子，遊戲將結束。", color="orange")
+            self.status.config(text=f"{'電腦' if self.current_player == self.computer_player else '玩家'}無法落子，PASS！")
+
+            # 換回對手
+            self.current_player = 2 if self.current_player == 1 else 1
+
+            # 如果對手能下 → 換他下
+            if self.get_valid_moves(self.current_player):
+                self.start_time = time.time()
+                self.redraw_pieces()
                 if self.current_player == self.computer_player:
-                    self.master.after(500, self.computer_move)
+                    self.status.config(text="電腦思考中...")
+                    self.master.after(100, self.computer_move)
+                else:
+                    name = self.p1_name_var.get()
+                    color = "黑" if self.current_player == 1 else "白"
+                    self.status.config(text=f"{name} ({color}) 的回合")
             else:
+                # 雙方都不能下
+                self.draw_info_text("無人可再落子，遊戲結束", color="red")
                 self.end_game()
+
 
     def computer_move(self):
         step_start_time = time.time()
-         # 直接讓 AI 算出最佳下一步
-        # mv = ai.get_best_move(self.board, self.computer_player, max_depth=6, time_limit=60.0)
-        # mv = ai.get_best_move(self.board, self.computer_player, use_model=True)
-        mv = ai.get_best_move(self.board, self.computer_player, max_depth=4, time_limit=60.0, use_model=False)
 
+        # 防呆檢查
+        valid_moves = self.get_valid_moves(self.computer_player)
+        print(f"[AI DEBUG] Player {self.computer_player} Valid moves: {valid_moves}")
 
-        if mv is None:
+        if not valid_moves:
             self.status.config(text="電腦無法落子，PASS！")
             self.draw_info_text("電腦無法落子，PASS！", color="red")
-            self.current_player = 1 if self.computer_player == 2 else 2
             self.start_time = time.time()
-            self.switch_player()  # 🔁 加上這行才會換到玩家
+            self.switch_player()
             return
-        
+
+        # 嘗試用 AI 算最佳下一步
+        mv = ai.get_best_move(self.board, self.computer_player, max_depth=4, time_limit=60.0, use_model=False)
+        print(f"[AI DEBUG] AI returned move: {mv}")
+
+        # 如果 AI 回傳 None，但其實還有合法步驟 → 強制 fallback
+        if mv is None:
+            print("[WARNING] AI 回傳 None，但實際仍有合法步驟，將 fallback 為第一個合法落子點")
+            mv = valid_moves[0]
+
         def make_move():
             row, col = mv
             self.board[row][col] = self.computer_player
@@ -459,9 +480,8 @@ class ReversiGUI:
             self.switch_player()
             self.last_returned_position = None
 
-        # 執行延遲後再記錄時間
-        # self.master.after(500, make_move)
         make_move()
+
 
 
     def update_time_label(self, step_time):
