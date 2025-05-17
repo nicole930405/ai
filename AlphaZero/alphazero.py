@@ -1,24 +1,70 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import random
 import numpy as np
 import os
 import time
 
-class AlphaZeroNet:
-    """A mock AlphaZero neural network for Reversi."""
-    def __init__(self, model_path=None):
-        self.model_loaded = False
-        if model_path and os.path.exists(model_path):
-            self.model_loaded = True
-            print("模型已成功加載")
-        else:
-            print("尚未訓練模型，使用未訓練狀態")
+class AlphaZeroNet(nn.Module):
+    def __init__(self):
+        super(AlphaZeroNet, self).__init__()
+        
+        # Input shape: (batch_size, 2, 8, 8)
+        self.conv1 = nn.Conv2d(2, 64, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        
+        self.policy_head = nn.Sequential(
+            nn.Conv2d(128, 2, kernel_size=1),
+            nn.Flatten(),
+            nn.Linear(2 * 8 * 8, 64)  # output = 8x8 board policy
+        )
+        
+        self.value_head = nn.Sequential(
+            nn.Conv2d(128, 1, kernel_size=1),
+            nn.Flatten(),
+            nn.Linear(8 * 8, 64),
+            nn.ReLU(),
+            nn.Linear(64, 1),
+            nn.Tanh()
+        )
     
-    def predict(self, state):
-        """Make a prediction for the given state."""
-        # Return random policy and value for untrained model
-        policy = np.random.dirichlet([1] * 64).reshape(8, 8)
-        value = random.uniform(-0.1, 0.1)  # Slightly random value near 0
-        return policy, value
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        
+        policy = self.policy_head(x)
+        value = self.value_head(x)
+        return policy.view(-1, 8, 8), value.view(-1)
+
+    def predict(self, board):
+        """
+        board: numpy array with shape (8,8)
+        return: policy (8x8), value (scalar)
+        """
+        tensor = self._board_to_tensor(board)
+        with torch.no_grad():
+            policy, value = self.forward(tensor)
+        return policy.squeeze(0).numpy(), value.item()
+
+    def _board_to_tensor(self, board):
+        """
+        Converts the 8x8 board to a tensor of shape (1, 2, 8, 8)
+        where [0] is player's stones and [1] is opponent's stones
+        """
+        p1 = (board == 1).astype(np.float32)
+        p2 = (board == 2).astype(np.float32)
+        tensor = np.stack([p1, p2], axis=0)  # Shape: (2, 8, 8)
+        return torch.tensor(tensor).unsqueeze(0)  # Shape: (1, 2, 8, 8)
+
+    def save_model(self, path):
+        torch.save(self.state_dict(), path)
+
+    def load_model(self, path):
+        self.load_state_dict(torch.load(path, map_location=torch.device('cpu')))
+        self.eval()
 
 class MCTS:
     """Monte Carlo Tree Search for AlphaZero."""
@@ -90,7 +136,13 @@ class MCTS:
 class AlphaZeroAI:
     """A simple AI using AlphaZero principles for Reversi."""
     def __init__(self, model_path=None):
-        self.net = AlphaZeroNet(model_path)
+        self.net = AlphaZeroNet()
+        if model_path and os.path.exists(model_path):
+            self.net.load_model(model_path)
+            self.trained = True
+        else:
+            self.trained = False
+
         self.mcts = MCTS(model=self.net, simulations=100)
         
         # If we don't have a trained model, use a simple strategy
