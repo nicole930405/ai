@@ -11,9 +11,9 @@ import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 model = AlphaZeroNet()
-alphazero_ai = AlphaZeroAI("model.py")
+alphazero_ai = AlphaZeroAI("model.pt")
 
-ai_model = AlphaZeroAI("model.py")
+ai_model = AlphaZeroAI("model.pt")
 mcts_ai = MCTS(model=ai_model, simulations = 100)
 
 
