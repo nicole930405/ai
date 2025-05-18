@@ -203,7 +203,7 @@ class ReversiGUI:
 
     def start_game(self):
         self.current_player = self.first_var.get()
-        self.computer_player = 2 
+        self.computer_player = 2 if self.current_player == 1 else 1
         self.init_pieces()
         self.redraw_pieces()
         self.total_time = 0
