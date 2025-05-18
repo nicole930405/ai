@@ -9,9 +9,10 @@ import time
 class AlphaZeroNet(nn.Module):
     def __init__(self):
         super(AlphaZeroNet, self).__init__()
+        self.model_loaded = False
         
-        # Input shape: (batch_size, 2, 8, 8)
-        self.conv1 = nn.Conv2d(2, 64, kernel_size=3, padding=1)
+        # Input shape: (batch_size, 3, 8, 8)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
         
@@ -37,19 +38,44 @@ class AlphaZeroNet(nn.Module):
         
         policy = self.policy_head(x)
         value = self.value_head(x)
-        return policy.view(-1, 8, 8), value.view(-1)
+        return policy, value
 
-    def predict(self, board):
+     # 添加board_to_tensor方法，處理8x8棋盤轉換為輸入張量
+    def board_to_tensor(self, board, current_player):
+        # 創建三個特徵平面：當前玩家、對手、空位
+        features = np.zeros((3, 8, 8), dtype=np.float32)
+        
+        opponent = 3 - current_player
+        
+        for i in range(8):
+            for j in range(8):
+                if board[i][j] == current_player:
+                    features[0, i, j] = 1  # 當前玩家
+                elif board[i][j] == opponent:
+                    features[1, i, j] = 1  # 對手
+                else:
+                    features[2, i, j] = 1  # 空位
+        
+        # 轉換為PyTorch張量並添加批次維度
+        tensor = torch.from_numpy(features).float().unsqueeze(0)
+        
+        # 如果有device定義，移至對應設備
+        if hasattr(self, 'device'):
+            tensor = tensor.to(self.device)
+        
+        return tensor
+    
+    def predict(self, board, current_player):
         """
         board: numpy array with shape (8,8)
         return: policy (8x8), value (scalar)
         """
-        tensor = self._board_to_tensor(board)
+        tensor = self.board_to_tensor(board, current_player)
         with torch.no_grad():
             policy, value = self.forward(tensor)
         return policy.squeeze(0).numpy(), value.item()
 
-    def _board_to_tensor(self, board):
+    #def _board_to_tensor(self, board):
         """
         Converts the 8x8 board to a tensor of shape (1, 2, 8, 8)
         where [0] is player's stones and [1] is opponent's stones
@@ -65,6 +91,7 @@ class AlphaZeroNet(nn.Module):
     def load_model(self, path):
         self.load_state_dict(torch.load(path, map_location=torch.device('cpu')))
         self.eval()
+        self.model_loaded = True
 
 class MCTS:
     """Monte Carlo Tree Search for AlphaZero."""

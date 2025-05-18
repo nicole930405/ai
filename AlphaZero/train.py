@@ -248,7 +248,7 @@ def generate_selfplay_data(model):
         traceback.print_exc()
         return []
 
-def train_model(data, save_path="model.pt"):
+def train_model(data, save_path="AlphaZero/model.pt"):
     
     try:
         # 嘗試創建模型
@@ -269,7 +269,7 @@ def train_model(data, save_path="model.pt"):
                     torch.save(model.state_dict(), "model_previous.pt")
                 else:
                     # 假設模型有自定義的保存方法
-                    model.save_model("model_previous.pt")
+                    model.save_model("AlphaZero/model_previous.pt")
                 print("儲存初始（未訓練）模型為 model_previous.pt")
             except Exception as e:
                 print(f"儲存初始模型失敗: {e}")
@@ -288,7 +288,7 @@ def train_model(data, save_path="model.pt"):
                 if isinstance(model, nn.Module):
                     torch.save(model.state_dict(), "model_previous.pt")
                 else:
-                    model.save_model("model_previous.pt")
+                    model.save_model("AlphaZero/model_previous.pt")
             except Exception as e:
                 print(f"載入模型失敗: {e}")
         
@@ -335,19 +335,15 @@ def train_model(data, save_path="model.pt"):
                     # 建立 batch
                     state_batch = torch.from_numpy(np.array([x[0] for x in batch])).float().to(device)
                     
-                    # 將 policy 轉換為 index 形式，適合 CrossEntropyLoss
-                    policy_targets = []
-                    for x in batch:
-                        policy = x[1]
-                        # 找出最大概率的位置
-                        flat_idx = np.argmax(policy.flatten())
-                        policy_targets.append(flat_idx)
-                    
-                    policy_targets = torch.tensor(policy_targets, dtype=torch.long).to(device)
+                    # 修改部分: 將 policy 目標保留為原始形式，不轉換為索引
+                    policy_targets = torch.from_numpy(np.array([x[1].flatten() for x in batch])).float().to(device)
                     value_batch = torch.tensor([x[2] for x in batch], dtype=torch.float32).unsqueeze(1).to(device)
     
                     # 預測
                     pred_policy, pred_value = model(state_batch)
+                    
+                    # 修改部分: 將預測的策略重塑為與目標相同的形狀
+                    pred_policy = pred_policy.view(-1, 64)  # 重塑為 [batch_size, 64]
                     
                     # 計算損失
                     loss_policy = loss_fn_policy(pred_policy, policy_targets)
@@ -385,7 +381,16 @@ def train_model(data, save_path="model.pt"):
             
             # 每個 epoch 結束後儲存模型
             try:
+                
+                save_path = "AlphaZero/model.pt"
+
+                # 建立 models 資料夾（如果還沒存在）
+                save_dir = os.path.dirname(save_path)
+                if save_dir and not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
+                    
                 if isinstance(model, nn.Module):
+                    torch.save(model.state_dict(), save_path)  # 覆蓋主版本
                     torch.save(model.state_dict(), f"{save_path}.epoch{epoch+1}")
                 else:
                     model.save_model(f"{save_path}.epoch{epoch+1}")
