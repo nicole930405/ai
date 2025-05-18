@@ -248,7 +248,7 @@ def generate_selfplay_data(model):
         traceback.print_exc()
         return []
 
-def train_model(data, save_path="AlphaZero/model.pt"):
+def train_model(data, save_path="model.pt"):
     
     try:
         # 嘗試創建模型
@@ -269,7 +269,7 @@ def train_model(data, save_path="AlphaZero/model.pt"):
                     torch.save(model.state_dict(), "model_previous.pt")
                 else:
                     # 假設模型有自定義的保存方法
-                    model.save_model("AlphaZero/model_previous.pt")
+                    model.save_model("model_previous.pt")
                 print("儲存初始（未訓練）模型為 model_previous.pt")
             except Exception as e:
                 print(f"儲存初始模型失敗: {e}")
@@ -288,7 +288,7 @@ def train_model(data, save_path="AlphaZero/model.pt"):
                 if isinstance(model, nn.Module):
                     torch.save(model.state_dict(), "model_previous.pt")
                 else:
-                    model.save_model("AlphaZero/model_previous.pt")
+                    model.save_model("model_previous.pt")
             except Exception as e:
                 print(f"載入模型失敗: {e}")
         
@@ -382,7 +382,7 @@ def train_model(data, save_path="AlphaZero/model.pt"):
             # 每個 epoch 結束後儲存模型
             try:
                 
-                save_path = "AlphaZero/model.pt"
+                save_path = "model.pt"
 
                 # 建立 models 資料夾（如果還沒存在）
                 save_dir = os.path.dirname(save_path)
