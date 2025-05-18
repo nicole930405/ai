@@ -6,7 +6,7 @@ import random
 import os
 import tensorflow as tf
 from tensorflow.keras import layers, models
-import ai  # 假設你已有 alpha-beta AI，當作老師
+import ai 
 import time
 
 DATA_FILE = "reversi_data.npy"

@@ -208,14 +208,12 @@ def minimax(board, player, depth, alpha, beta, maximizing, start_time, time_limi
 
 def get_best_move(board, player, max_depth=4, time_limit=0.5, use_model=False):
     valid_moves = get_valid_moves(board, player)
-    print(f"[AI DEBUG] Player {player} Valid moves: {valid_moves}")  # <<<<<<<<<<
-    
     if not valid_moves:
         return None
+
     if use_model:
         return predict_by_model(board, valid_moves)
     else:
-        # 原本的 Alpha-Beta 策略
         start_time = time.time()
         best_move = None
         current_depth = 1
@@ -223,9 +221,16 @@ def get_best_move(board, player, max_depth=4, time_limit=0.5, use_model=False):
             value, move = minimax(board, player, current_depth, -math.inf, math.inf, True, start_time, time_limit)
             if time.time() - start_time > time_limit:
                 break
-            best_move = move
+            if move:  # ✅ 加上這行
+                best_move = move
             current_depth += 1
+
+        if best_move is None:
+            print("[WARNING] fallback 到第一個合法落子點")
+            best_move = valid_moves[0]
+
         return best_move
+
 
 def choose_best_return_piece(board, pending_return, player):
     """
