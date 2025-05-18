@@ -394,7 +394,6 @@ class ReversiGUI:
 
     def switch_player(self):
         self.current_player = 2 if self.current_player == 1 else 1
-
         valid_moves = self.get_valid_moves(self.current_player)
 
         if valid_moves:
@@ -405,18 +404,14 @@ class ReversiGUI:
                 self.master.after(100, self.computer_move)
             else:
                 name = self.p1_name_var.get()
-                color = "黑" if self.current_player == 1 else "白"
-                self.status.config(text=f"{name} ({color}) 的回合")
+                self.status.config(text=f"{name} (黑) 的回合")
         else:
-            # 顯示提示
-            self.draw_info_text("無法落子，PASS！若雙方都無法落子，遊戲將結束。", color="orange")
-            self.status.config(text=f"{'電腦' if self.current_player == self.computer_player else '玩家'}無法落子，PASS！")
-
-            # 換回對手
+            passer = self.current_player
             self.current_player = 2 if self.current_player == 1 else 1
+            opponent_moves = self.get_valid_moves(self.current_player)
 
-            # 如果對手能下 → 換他下
-            if self.get_valid_moves(self.current_player):
+            if opponent_moves:
+                messagebox.showinfo("PASS", f"{'電腦' if passer == self.computer_player else '玩家'}無法落子，PASS！")
                 self.start_time = time.time()
                 self.redraw_pieces()
                 if self.current_player == self.computer_player:
@@ -424,12 +419,16 @@ class ReversiGUI:
                     self.master.after(100, self.computer_move)
                 else:
                     name = self.p1_name_var.get()
-                    color = "黑" if self.current_player == 1 else "白"
-                    self.status.config(text=f"{name} ({color}) 的回合")
+                    self.status.config(text=f"{name} (黑) 的回合")
             else:
-                # 雙方都不能下
-                self.draw_info_text("無人可再落子，遊戲結束", color="red")
+                # 雙方都不能下 → 合併訊息
+                message = (
+                    f"{'電腦' if passer == self.computer_player else '玩家'}無法落子，PASS！\n"
+                    f"{'玩家' if passer == self.computer_player else '電腦'}也無法落子，遊戲結束！"
+                )
+                self.draw_info_text(message, color="red")
                 self.end_game()
+
 
 
     def computer_move(self):
@@ -438,13 +437,6 @@ class ReversiGUI:
         # 防呆檢查
         valid_moves = self.get_valid_moves(self.computer_player)
         print(f"[AI DEBUG] Player {self.computer_player} Valid moves: {valid_moves}")
-
-        if not valid_moves:
-            self.status.config(text="電腦無法落子，PASS！")
-            self.draw_info_text("電腦無法落子，PASS！", color="red")
-            self.start_time = time.time()
-            self.switch_player()
-            return
 
         # 嘗試用 AI 算最佳下一步
         mv = ai.get_best_move(self.board, self.computer_player, max_depth=4, time_limit=60.0, use_model=False)
@@ -465,9 +457,9 @@ class ReversiGUI:
             # 顯示電腦下的位置與還棋提示
             if self.last_returned_position:
                 rx, ry = self.last_returned_position
-                self.draw_info_text(f"電腦下在 ({row+1}, {col+1})，並還了 ({rx+1}, {ry+1})", color="yellow")
+                self.draw_info_text(f"電腦下在 ({row}, {col})，並還了 ({rx+1}, {ry+1})", color="yellow")
             else:
-                self.draw_info_text(f"電腦下在 ({row+1}, {col+1})")
+                self.draw_info_text(f"電腦下在 ({row}, {col})")
 
             if flip_message != "None":
                 self.draw_info_text(flip_message)
