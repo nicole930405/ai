@@ -15,11 +15,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"使用裝置: {device}")
 
 BOARD_SIZE = 8
-EPOCHS = 30
+EPOCHS = 50
 BATCH_SIZE = 64
-NUM_SELFPLAY_GAMES = 50  # 每輪訓練時的自我對弈局數
+NUM_SELFPLAY_GAMES = 100  # 每輪訓練時的自我對弈局數
 LEARNING_RATE = 0.001  # 明確設定學習率
-CLIP_VALUE = 1.0  # 設定梯度裁剪值
+CLIP_VALUE = 2.0  # 設定梯度裁剪值
 
 DIRECTIONS = [(-1, -1), (-1, 0), (-1, 1),
               (0, -1),          (0, 1),
